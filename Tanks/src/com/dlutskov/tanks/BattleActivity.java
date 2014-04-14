@@ -2,15 +2,14 @@ package com.dlutskov.tanks;
 
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
-import com.dlutskov.tanks.objects.Tank;
 import com.dlutskov.tanks.objects.UserTank;
 
 /**
@@ -34,7 +33,6 @@ public class BattleActivity extends AbstractActivity implements OnTouchListener 
 		super.onCreate(arg0);
 
 		// Setting up initial settings
-		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -42,7 +40,8 @@ public class BattleActivity extends AbstractActivity implements OnTouchListener 
 		dpScale = this.getResources().getDisplayMetrics().density;
 
 		// Setting up onTouchListener
-		this.findViewById(R.id.applicationArea).setOnTouchListener(this);
+		LinearLayout applicationArea = (LinearLayout)this.findViewById(R.id.applicationArea);
+		applicationArea.setOnTouchListener(this);
 
 		int width = (int) (100 * dpScale + 0.5f);
 		int height = (int) (50 * dpScale + 0.5f);
@@ -64,13 +63,13 @@ public class BattleActivity extends AbstractActivity implements OnTouchListener 
 		float y = event.getY();
 
 		switch (event.getAction()) {
-		case MotionEvent.ACTION_DOWN: // нажатие
+		case MotionEvent.ACTION_DOWN: 
 			UserTank.getTank(this).move(x, y);
 			break;
-		case MotionEvent.ACTION_MOVE: // движение
+		case MotionEvent.ACTION_MOVE: 
 
 			break;
-		case MotionEvent.ACTION_UP: // отпускание
+		case MotionEvent.ACTION_UP: 
 
 			break;
 		}
