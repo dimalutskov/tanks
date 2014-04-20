@@ -17,8 +17,10 @@ public class InformationPanelFragment extends Fragment {
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 			Bundle savedInstanceState) {
-		// TODO Auto-generated method stub
-		return super.onCreateView(inflater, container, savedInstanceState);
+		
+		View parentView = inflater.inflate(R.layout.fragment_information_panel, null);
+		
+		return parentView;
 	}
 
 }

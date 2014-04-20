@@ -1,42 +1,72 @@
 package com.dlutskov.tanks.objects;
 
-import java.util.concurrent.TimeUnit;
-
 import android.content.Context;
-import android.util.Log;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.view.animation.Animation;
-import android.view.animation.Animation.AnimationListener;
-import android.view.animation.AnimationSet;
 import android.view.animation.RotateAnimation;
-import android.view.animation.TranslateAnimation;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
+import com.dlutskov.tanks.R;
+import com.dlutskov.tanks.actions.ActionMove;
+
 /**
- * Represent tank as a graphic ImageView object and allow to make some actions
- * which are fit for tanks
+ * Represent tank as a container of graphic ImageView objects and allow to make
+ * some actions which are fit for tanks
  */
-public class Tank extends ImageView {
+public class Tank extends RelativeLayout {
 
 	/**
 	 * Properties of this tank
 	 */
-	protected TankProperties properties;
+	public TankProperties properties;
 
 	/**
-	 * Represent moving behavior and is null when tank is not moving
+	 * Image of tank body
 	 */
-	private TankMoving moving = null;
+	private ImageView tankImageBody;
 	
 	/**
+	 * Image of tank gun
+	 */
+	private ImageView tankImageGun;
+		
+	/**
 	 * CONSTRUCTOR
-	 * 
-	 * @param context
 	 */
 	public Tank(Context context) {
 		super(context);
 		this.properties = new TankProperties();
 		properties.setSpeed(3);
+		
+		//this.setBackgroundColor(Color.TRANSPARENT);
+		this.setBackgroundColor(Color.RED);
+
+		// Create tank body image
+		int width = Integer.parseInt(getResources().getString(
+				R.string.width_tank));
+		int height = Integer.parseInt(getResources().getString(
+				R.string.height_tank));
+		float dpScale = this.getResources().getDisplayMetrics().density;
+		LayoutParams params = new LayoutParams((int) (width * dpScale + 0.5f),
+				(int) (height * dpScale + 0.5f));
+		tankImageBody = new ImageView(context);
+		tankImageBody.setImageBitmap(BitmapFactory.decodeResource(getResources(),
+				R.drawable.tank_shell));
+		tankImageBody.setLayoutParams(params);
+			
+		this.addView(tankImageBody);
+	}
+	
+	// GET SET METHODS
+	public void setTankImageBody(Bitmap image) {
+		tankImageBody.setImageBitmap(image);
+	}
+	
+	public ImageView getTankImageBody() {
+		return this.tankImageBody;
 	}
 
 	/**
@@ -47,32 +77,45 @@ public class Tank extends ImageView {
 	 * @param y
 	 *            essential y position
 	 */
-	public void move(float x, float y) {
+	public void move(float x, float y, ActionMove moving) {
 
-		// Getting current position
-		int coordinates[] = new int[2];
-		this.getLocationOnScreen(coordinates);
-
+		// Finish current moving to make new moving
+		moving.interruptMoving();
+		this.clearAnimation();
+				
+		// Draw tank on the current position when previous move
+		// wasn't be finished
+		LayoutParams params =  (RelativeLayout.LayoutParams)getLayoutParams();
+		params.leftMargin = properties.getCoordinates().x;
+		params.topMargin = properties.getCoordinates().y;
+		this.setLayoutParams(params);
+		this.startAnimation(createRotateAnimation(properties.getRotateAngle(), 0));
+		
 		// Getting essential path
-		float pathX = x - coordinates[0];
-		float pathY = y - coordinates[1];
+		//float pathX = x - this.getLeft();
+		//float pathY = y - this.getTop();
+		float pathX = x - properties.getCoordinates().x;
+		float pathY = y - properties.getCoordinates().y;
+				
 		if (pathX >= 0)
 			pathX -= getWidth();
 		if (pathY >= 0)
 			pathY -= getHeight();
-		
+
 		// Getting essential rotation angle
 		double absPath = getAbsolutePath(Math.abs(pathX), Math.abs(pathY));
 		float angle = (float) getRotateAngle(absPath, pathY);
-		if (pathX < 0)
-			angle = 180 - angle;
 		
-		this.clearAnimation();
-		moving = new TankMoving(pathX, pathY, angle);
-		moving.move();
+		//Log.d("TAG", "Before: " + angle + " ");
+		if (pathX < 0) {
+			angle = 180 - angle;
+		}
 
+		
+		
+		
+		moving.move(pathX, pathY, angle);
 	}
-
 
 	/**
 	 * Getting absolute path which tank has to move using Pythagoras' theorem
@@ -98,152 +141,24 @@ public class Tank extends ImageView {
 		double asin = Math.asin(sin);
 		return Math.toDegrees(asin);
 	}
-
-	/**
-	 * Save changed view state after animation finish
-	 */
-	private class MoveAnimationListener implements AnimationListener {
-
-		private float pathX;
-
-		private float pathY;
-
-		private float angle;
-
-		public MoveAnimationListener(float pathX, float pathY, float angle) {
-			this.pathX = pathX;
-			this.pathY = pathY;
-			this.angle = angle;
-		}
-
-		@Override
-		public void onAnimationEnd(Animation animation) {
-			RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) Tank.this
-					.getLayoutParams();
-			params.bottomMargin -= pathY;
-			params.leftMargin += pathX;
-			Tank.this.setLayoutParams(params);
-			Tank.this.properties.setRotateAngle((int) angle);
-
-			//Tank.this.startAnimation(createRotateAnimation(angle, 0));
-		}
-
-		@Override
-		public void onAnimationRepeat(Animation animation) {
-		}
-
-		@Override
-		public void onAnimationStart(Animation animation) {
-		}
-	}
 	
 	/**
-	 * Moving tank changing current position with animation which will be repeated
-	 * several times to pass all essential path
+	 * Crating animation which will rotate tank to essential direction before
+	 * tank start moving
 	 */
-	private class TankMoving {
-		
-		/**
-		 * All essential path for x
-		 */
-		private float pathX;
-		
-		/**
-		 * All essential path for y
-		 */
-		private float pathY;
-		
-		/**
-		 * Rotate angle to rotate tank 
-		 */
-		private float angle;
-		
-		/**
-		 * Animation which will represent tank moving
-		 */
-		private AnimationSet moveAnimation;
-		
-		/**
-		 * CONSTRUCTOR
-		 */
-		public TankMoving(float pathX, float pathY, float angle) {
-			this.pathX = pathX;
-			this.pathY = pathY;
-			this.angle = angle;
-		}
-		
-		/**
-		 * Move tank to essential position using several translate animations
-		 */
-		public void move() {
-			moveAnimation = new AnimationSet(true);
-			
-			//moveAnimation.addAnimation(createRotateAnimation(angle, 2));
-			//moveAnimation.addAnimation(createMoveAnimation());
-			Tank.this.startAnimation(moveAnimation);
-			
-		}
-		
-		/**
-		 * Create essential translate animation with current parameters 
-		 */
-		private Animation createMoveAnimation(float pathX, float pathY,
-				long startOffset) {
+	private Animation createRotateAnimation(float angle,
+			float durationCoefficient) {
+		// Rotate animation
+		Animation rotate = new RotateAnimation(
+				properties.getRotateAngle(), angle,
+				Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF,
+				0.5f);
+		rotate.setDuration((long) (Math.abs(angle) * durationCoefficient));
+		rotate.setFillAfter(true);
 
-			long duration = (long) (getAbsolutePath(pathX, pathY) * properties
-					.getSpeed());
-
-			// Move animation
-			Animation translate = new TranslateAnimation(0, pathX, 0, pathY);
-			translate.setDuration(duration);
-			translate.setStartOffset(startOffset);
-			translate.setFillAfter(true);
-
-			return translate;
-		}
-
-		/**
-		 * Crating animation which will rotate tank to essential direction before
-		 * tank start moving
-		 */
-		private Animation createRotateAnimation(float angle,
-				float durationCoefficient) {
-			// Rotate animation
-			Animation rotate = new RotateAnimation(properties.getRotateAngle(),
-					angle, Animation.RELATIVE_TO_SELF, 0.5f,
-					Animation.RELATIVE_TO_SELF, 0.5f);
-			rotate.setDuration((long) (Math.abs(angle) * durationCoefficient));
-			rotate.setFillAfter(true);
-
-			return rotate;
-		}
+		return rotate;
 	}
-
+		
 }
 
-/**
- * Determine main tank properties like sped, damage etc.
- */
-class TankProperties {
 
-	private int speed;
-
-	private int rotateAngle = 0;
-
-	public int getSpeed() {
-		return speed;
-	}
-
-	public void setSpeed(int speed) {
-		this.speed = speed;
-	}
-
-	public int getRotateAngle() {
-		return this.rotateAngle;
-	}
-
-	public void setRotateAngle(int rotateAngle) {
-		this.rotateAngle = rotateAngle;
-	}
-
-}
